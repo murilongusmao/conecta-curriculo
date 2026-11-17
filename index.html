@@ -23,9 +23,8 @@
       </div>
       <nav class="nav-tabs" aria-label="Navegação principal">
         <button class="tab-btn active" data-tab="pdf-tab">1. Analisar PDF</button>
-        <button class="tab-btn" data-tab="linkedin-tab">2. Analisar LinkedIn</button>
-        <button class="tab-btn" data-tab="builder-tab">3. Currículo Melhorado</button>
-        <button class="tab-btn" data-tab="survey-tab">4. Pesquisa &amp; Professor</button>
+        <button class="tab-btn" data-tab="builder-tab">2. Currículo Melhorado</button>
+        <button class="tab-btn" data-tab="survey-tab">3. Pesquisa &amp; Professor</button>
       </nav>
     </div>
   </header>
@@ -35,42 +34,12 @@
     <section class="hero-banner no-print">
       <div class="hero-text">
         <span class="pill">Especialista em Recrutamento TI · Primeiro Emprego &amp; Estágio</span>
-        <h2>Prepare seu currículo e LinkedIn para passar no ATS e conquistar sua primeira vaga em TI</h2>
+        <h2>Prepare seu currículo para passar no ATS e conquistar sua primeira vaga em TI</h2>
         <p>
           Desenvolvido para estudantes de Tecnologia da Informação no âmbito da oficina de
-          <strong>Inclusão Digital e Empregabilidade</strong>. Envie seu PDF ou perfil do LinkedIn para receber
+          <strong>Inclusão Digital e Empregabilidade</strong>. Envie seu currículo em PDF (ou o PDF exportado do seu LinkedIn) para receber
           diagnóstico técnico, dicas práticas e gerar um currículo ATS de 1 página.
         </p>
-      </div>
-      <div class="hero-actions">
-        <button id="load-demo-btn" class="btn btn-outline" type="button">
-          Carregar Exemplo de Estudante
-        </button>
-        <button id="toggle-config-btn" class="btn btn-outline" type="button">
-          Configurar IA &amp; Sheets
-        </button>
-      </div>
-    </section>
-
-    <!-- CONFIGURAÇÃO DE INTEGRAÇÕES (IA GEMINI + GOOGLE SHEETS) -->
-    <section id="integrations-panel" class="card no-print hidden" style="margin-bottom: 24px;">
-      <div class="card-header-row">
-        <h3>Conexões Online (Backend Gemini + Google Sheets)</h3>
-        <span class="muted small">Salvo localmente no navegador ou fixado no código em <code>app.js</code></span>
-      </div>
-      <div class="form-grid">
-        <div class="form-group">
-          <label for="cfg-ai-url">URL do Backend IA (Cloudflare Worker ou Vercel)</label>
-          <input type="url" id="cfg-ai-url" placeholder="https://conecta-carreira-ai.seu-usuario.workers.dev" />
-        </div>
-        <div class="form-group">
-          <label for="cfg-sheets-url">URL do Google Apps Script (Planilha Google Sheets)</label>
-          <input type="url" id="cfg-sheets-url" placeholder="https://script.google.com/macros/s/.../exec" />
-        </div>
-      </div>
-      <div class="btn-row">
-        <button id="save-config-btn" class="btn btn-primary small-btn" type="button">Salvar Conexões</button>
-        <span id="cfg-status-msg" class="muted small" style="align-self:center;"></span>
       </div>
     </section>
 
@@ -111,64 +80,14 @@
         <div class="card" id="pdf-result-card">
           <h3>Diagnóstico do Recrutador TI</h3>
           <div id="pdf-analysis-empty" class="empty-state">
-            <p>Envie um PDF ou clique em <strong>"Carregar Exemplo de Estudante"</strong> para ver a análise completa de ATS, contato, objetivo, projetos e competências.</p>
+            <p>Envie seu currículo em <strong>PDF</strong> (ou exporte seu LinkedIn em <em>Mais &rarr; Salvar como PDF</em>) para ver a análise completa de ATS, contato, objetivo, projetos e competências.</p>
           </div>
           <div id="pdf-analysis-output" class="hidden"></div>
         </div>
       </div>
     </section>
 
-    <!-- TAB 2: ANALISAR LINKEDIN -->
-    <section id="linkedin-tab" class="tab-panel no-print">
-      <div class="grid-2">
-        <div class="card">
-          <h3>Analisar Perfil do LinkedIn</h3>
-          <p class="muted">
-            Cole a URL do seu perfil e copie os textos das seções principais (Título/Headline, Sobre, Experiências/Projetos e Competências) para receber recomendações de posicionamento para vagas de TI.
-          </p>
-
-          <div class="form-group">
-            <label for="li-url">URL do LinkedIn</label>
-            <input type="url" id="li-url" placeholder="https://www.linkedin.com/in/seu-nome" />
-          </div>
-
-          <div class="form-group">
-            <label for="li-headline">Título (Headline)</label>
-            <input type="text" id="li-headline" placeholder="Ex: Estudante de Análise e Desenvolvimento de Sistemas | Java, SQL, Git | Buscando Estágio em TI" />
-          </div>
-
-          <div class="form-group">
-            <label for="li-about">Seção "Sobre" (Resumo)</label>
-            <textarea id="li-about" rows="4" placeholder="Cole aqui o seu resumo do LinkedIn..."></textarea>
-          </div>
-
-          <div class="form-group">
-            <label for="li-exp">Experiências, Projetos e Competências</label>
-            <textarea id="li-exp" rows="4" placeholder="Cole seus projetos acadêmicos, cursos, certificações e competências técnicas..."></textarea>
-          </div>
-
-          <div class="form-group">
-            <label for="li-github">Link do GitHub / Portfólio (opcional)</label>
-            <input type="url" id="li-github" placeholder="https://github.com/seu-usuario" />
-          </div>
-
-          <div class="btn-row">
-            <button id="analyze-li-btn" class="btn btn-primary" type="button">Analisar Perfil (Regras)</button>
-            <button id="analyze-li-ai-btn" class="btn btn-secondary" type="button">Analisar com IA (Gemini)</button>
-          </div>
-        </div>
-
-        <div class="card">
-          <h3>Avaliação de Empregabilidade (LinkedIn + GitHub)</h3>
-          <div id="li-analysis-empty" class="empty-state">
-            <p>Preencha os campos ao lado para avaliar visibilidade para recrutadores, palavras-chave de TI, uso de portfólio no GitHub e dicas para Gupy/CIEE.</p>
-          </div>
-          <div id="li-analysis-output" class="hidden"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- TAB 3: CURRÍCULO MELHORADO (ATS 1 PÁGINA) -->
+    <!-- TAB 2: CURRÍCULO MELHORADO (ATS 1 PÁGINA) -->
     <section id="builder-tab" class="tab-panel">
       <div class="builder-layout">
         <div class="card no-print">
@@ -374,9 +293,37 @@
     </section>
   </main>
 
+  <!-- PAINEL RESTRITO DO ORGANIZADOR (COM SENHA) -->
+  <section id="integrations-panel" class="container card no-print hidden" style="margin-bottom: 24px;">
+    <div class="card-header-row">
+      <h3>Área do Organizador (Backend Gemini + Google Sheets)</h3>
+      <button id="close-config-btn" class="btn btn-outline small-btn" type="button">Fechar</button>
+    </div>
+    <p class="muted small">Salvo localmente neste navegador. Para liberar para todos os alunos sem precisar configurar, cole as URLs em <code>DEFAULT_AI_ENDPOINT</code> e <code>DEFAULT_SHEETS_URL</code> no arquivo <code>app.js</code>.</p>
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="cfg-ai-url">URL do Backend IA (Cloudflare Worker ou Vercel)</label>
+        <input type="url" id="cfg-ai-url" placeholder="https://conecta-carreira-ai.seu-usuario.workers.dev" />
+      </div>
+      <div class="form-group">
+        <label for="cfg-sheets-url">URL do Google Apps Script (Planilha Google Sheets)</label>
+        <input type="url" id="cfg-sheets-url" placeholder="https://script.google.com/macros/s/.../exec" />
+      </div>
+    </div>
+    <div class="btn-row">
+      <button id="save-config-btn" class="btn btn-primary small-btn" type="button">Salvar Conexões</button>
+      <span id="cfg-status-msg" class="muted small" style="align-self:center;"></span>
+    </div>
+  </section>
+
   <footer class="footer no-print">
     <div class="container">
       <p>Projeto de Extensão <strong>Conecta Comunidade</strong> · Inclusão Digital, Empregabilidade e Desenvolvimento Tecnológico · ODS 4 e ODS 8</p>
+      <p style="margin-top: 6px;">
+        <button id="toggle-config-btn" class="btn btn-outline small-btn" type="button" style="font-size: 0.75rem; padding: 4px 10px; opacity: 0.75;">
+          Área do Organizador
+        </button>
+      </p>
     </div>
   </footer>
 

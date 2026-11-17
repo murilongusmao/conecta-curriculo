@@ -4,6 +4,7 @@
 const DEFAULT_AI_ENDPOINT = 'https://conecta-carreira-ai.murilo-dngusmao.workers.dev';
 const DEFAULT_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwZ1tQ27IU70Yezoy0ehncT0ifnxwhVH9edSB7TPVR2vlAaf17rmJf1d68pbltsd172/exec';
 const CONFIG_STORAGE_KEY = 'conecta_carreira_config_v1';
+const ADMIN_PASSWORD = 'conecta2026'; // Altere esta senha se desejar
 
 document.addEventListener('DOMContentLoaded', () => {
   // Configurar worker do PDF.js se disponível
@@ -37,7 +38,22 @@ document.addEventListener('DOMContentLoaded', () => {
   cfgSheetsInput.value = initialCfg.sheetsUrl;
 
   document.getElementById('toggle-config-btn').addEventListener('click', () => {
-    integrationsPanel.classList.toggle('hidden');
+    if (!integrationsPanel.classList.contains('hidden')) {
+      integrationsPanel.classList.add('hidden');
+      return;
+    }
+    const senha = prompt('Digite a senha do organizador para acessar as configurações:');
+    if (senha === null) return;
+    if (senha === ADMIN_PASSWORD) {
+      integrationsPanel.classList.remove('hidden');
+      integrationsPanel.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      alert('Senha incorreta.');
+    }
+  });
+
+  document.getElementById('close-config-btn').addEventListener('click', () => {
+    integrationsPanel.classList.add('hidden');
   });
 
   document.getElementById('save-config-btn').addEventListener('click', () => {
@@ -205,24 +221,6 @@ document.addEventListener('DOMContentLoaded', () => {
     activateTab('builder-tab');
   });
 
-  // --- Analisador LinkedIn ---
-  document.getElementById('analyze-li-btn').addEventListener('click', () => {
-    const data = {
-      url: document.getElementById('li-url').value,
-      headline: document.getElementById('li-headline').value,
-      about: document.getElementById('li-about').value,
-      exp: document.getElementById('li-exp').value,
-      github: document.getElementById('li-github').value
-    };
-    const result = window.ConectaAnalyzer.analyzeLinkedInProfile(data);
-    renderDiagnosis(
-      document.getElementById('li-analysis-output'),
-      document.getElementById('li-analysis-empty'),
-      result,
-      false
-    );
-  });
-
   // --- Análise Real com IA (Gemini via Cloudflare Worker / Vercel) ---
   async function runGeminiAnalysis({ mode, content, jobDescription, outputEl, emptyEl, btnEl }) {
     const { aiUrl } = getConfig();
@@ -321,25 +319,6 @@ document.addEventListener('DOMContentLoaded', () => {
       jobDescription: targetJobText.value,
       outputEl: document.getElementById('pdf-analysis-output'),
       emptyEl: document.getElementById('pdf-analysis-empty'),
-      btnEl: e.currentTarget
-    });
-  });
-
-  document.getElementById('analyze-li-ai-btn').addEventListener('click', e => {
-    const liContent = [
-      `URL: ${document.getElementById('li-url').value}`,
-      `Título: ${document.getElementById('li-headline').value}`,
-      `Sobre: ${document.getElementById('li-about').value}`,
-      `Experiências/Projetos: ${document.getElementById('li-exp').value}`,
-      `GitHub: ${document.getElementById('li-github').value}`
-    ].join('\n');
-
-    runGeminiAnalysis({
-      mode: 'linkedin',
-      content: liContent,
-      jobDescription: targetJobText.value,
-      outputEl: document.getElementById('li-analysis-output'),
-      emptyEl: document.getElementById('li-analysis-empty'),
       btnEl: e.currentTarget
     });
   });
@@ -500,60 +479,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('print-cv-btn').addEventListener('click', () => {
     activateTab('builder-tab');
     window.print();
-  });
-
-  // --- Botão de Exemplo Fictício (para demonstração imediata) ---
-  document.getElementById('load-demo-btn').addEventListener('click', () => {
-    pdfFileLabel.textContent = 'Exemplo carregado: curriculo_lucas_estudante_ti.pdf';
-    lastPdfPages = 1;
-    pdfRawText.value = `Lucas Ferreira da Silva
-Curitiba/PR | (41) 99812-3344 | lucasferreira_gamer123@gmail.com
-LinkedIn: linkedin.com/in/lucas-ferreira-ti
-
-Objetivo
-Busco uma oportunidade para crescer junto com a empresa e enfrentar novos desafios.
-
-Competências
-Java, SQL, Git, Windows, atendimento ao cliente.
-
-Formação Acadêmica
-Análise e Desenvolvimento de Sistemas - Faculdade Conecta (2º Semestre, conclusão prevista Dez/2027)`;
-
-    targetJobText.value =
-      'Estágio em Desenvolvimento / Suporte TI. Requisitos: Java, SQL, Git, GitHub, Linux, Redes, trabalho em equipe.';
-
-    document.getElementById('li-url').value = 'https://www.linkedin.com/in/lucas-ferreira-ti';
-    document.getElementById('li-headline').value =
-      'Estudante de ADS | Java, SQL, Git | Buscando Estágio em TI';
-    document.getElementById('li-about').value =
-      'Estudante de Análise e Desenvolvimento de Sistemas focado em desenvolvimento backend e bancos de dados. Desenvolvi projeto acadêmico CRUD em Java com MySQL e versionamento no GitHub.';
-    document.getElementById('li-exp').value =
-      'Projeto Acadêmico: Sistema de Biblioteca em Java/MySQL com Git e GitHub. Curso de Fundamentos de Redes Cisco e LGPD.';
-    document.getElementById('li-github').value = 'https://github.com/lucas-ferreira-ti';
-
-    cvFields.name.value = 'Lucas Ferreira da Silva';
-    cvFields.city.value = 'Curitiba/PR';
-    cvFields.phone.value = '(41) 99812-3344';
-    cvFields.email.value = 'lucas.ferreira.ti@gmail.com';
-    cvFields.linkedin.value = 'linkedin.com/in/lucas-ferreira-ti';
-    cvFields.github.value = 'github.com/lucas-ferreira-ti';
-    cvFields.objective.value =
-      'Estágio em Desenvolvimento de Software ou Suporte Técnico em TI.';
-    cvFields.skillsInfra.value = 'Windows, Linux (básico), Redes TCP/IP, Cisco Packet Tracer';
-    cvFields.skillsDev.value = 'Java, SQL, MySQL, HTML5, CSS3, Git, GitHub';
-    cvFields.skillsSoft.value = 'Resolução de problemas, Trabalho em equipe, Scrum, Proatividade';
-    cvFields.projects.value =
-      'Sistema CRUD de Biblioteca (Java + MySQL): Aplicação acadêmica para controle de empréstimos com código versionado no GitHub.\nTopologia de Rede Corporativa (Cisco Packet Tracer): Simulação de sub-redes, DHCP e roteamento básico.';
-    cvFields.experience.value =
-      'Loja Tech Center | Atendimento ao Cliente | Jan/2025 - Atual\nAtendimento ao público, organização de chamados internos e apoio em planilhas.';
-    cvFields.education.value =
-      'Tecnologia em Análise e Desenvolvimento de Sistemas - Faculdade Conecta | 2º Semestre - Conclusão prevista: Dez/2027 - Curitiba/PR';
-    cvFields.courses.value =
-      'Cisco Networking Academy - Fundamentos de Redes\nFundação Bradesco - LGPD e Segurança da Informação';
-    cvFields.languages.value = 'Português - Nativo | Inglês - Intermediário (leitura técnica)';
-
-    runPdfAnalysis();
-    renderCvPreview();
   });
 
   // --- Pesquisa Online de Feedback & Painel do Professor ---
