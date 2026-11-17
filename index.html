@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Conecta Carreira TI — Análise de Currículo, LinkedIn &amp; Feedback</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <!-- PDF.js para extração real de texto de currículos em PDF no navegador -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+  <header class="topbar no-print">
+    <div class="container topbar-inner">
+      <div class="brand">
+        <div class="brand-badge">CC</div>
+        <div>
+          <h1>Conecta Carreira <span class="accent">TI</span></h1>
+          <p class="subtitle">Projeto de Extensão Conecta Comunidade · ODS 4 &amp; ODS 8</p>
+        </div>
+      </div>
+      <nav class="nav-tabs" aria-label="Navegação principal">
+        <button class="tab-btn active" data-tab="pdf-tab">1. Analisar PDF</button>
+        <button class="tab-btn" data-tab="linkedin-tab">2. Analisar LinkedIn</button>
+        <button class="tab-btn" data-tab="builder-tab">3. Currículo Melhorado</button>
+        <button class="tab-btn" data-tab="survey-tab">4. Pesquisa &amp; Professor</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container main-content">
+    <!-- HERO / CONTEXTO -->
+    <section class="hero-banner no-print">
+      <div class="hero-text">
+        <span class="pill">Especialista em Recrutamento TI · Primeiro Emprego &amp; Estágio</span>
+        <h2>Prepare seu currículo e LinkedIn para passar no ATS e conquistar sua primeira vaga em TI</h2>
+        <p>
+          Desenvolvido para estudantes de Tecnologia da Informação no âmbito da oficina de
+          <strong>Inclusão Digital e Empregabilidade</strong>. Envie seu PDF ou perfil do LinkedIn para receber
+          diagnóstico técnico, dicas práticas e gerar um currículo ATS de 1 página.
+        </p>
+      </div>
+      <div class="hero-actions">
+        <button id="load-demo-btn" class="btn btn-outline" type="button">
+          Carregar Exemplo de Estudante
+        </button>
+        <button id="toggle-config-btn" class="btn btn-outline" type="button">
+          Configurar IA &amp; Sheets
+        </button>
+      </div>
+    </section>
+
+    <!-- CONFIGURAÇÃO DE INTEGRAÇÕES (IA GEMINI + GOOGLE SHEETS) -->
+    <section id="integrations-panel" class="card no-print hidden" style="margin-bottom: 24px;">
+      <div class="card-header-row">
+        <h3>Conexões Online (Backend Gemini + Google Sheets)</h3>
+        <span class="muted small">Salvo localmente no navegador ou fixado no código em <code>app.js</code></span>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="cfg-ai-url">URL do Backend IA (Cloudflare Worker ou Vercel)</label>
+          <input type="url" id="cfg-ai-url" placeholder="https://conecta-carreira-ai.seu-usuario.workers.dev" />
+        </div>
+        <div class="form-group">
+          <label for="cfg-sheets-url">URL do Google Apps Script (Planilha Google Sheets)</label>
+          <input type="url" id="cfg-sheets-url" placeholder="https://script.google.com/macros/s/.../exec" />
+        </div>
+      </div>
+      <div class="btn-row">
+        <button id="save-config-btn" class="btn btn-primary small-btn" type="button">Salvar Conexões</button>
+        <span id="cfg-status-msg" class="muted small" style="align-self:center;"></span>
+      </div>
+    </section>
+
+    <!-- TAB 1: ANALISAR PDF -->
+    <section id="pdf-tab" class="tab-panel active no-print">
+      <div class="grid-2">
+        <div class="card">
+          <h3>Enviar Currículo em PDF</h3>
+          <p class="muted">
+            O texto do seu PDF é extraído localmente no navegador para verificar compatibilidade com sistemas
+            <strong>ATS (Gupy, CIEE, Indeed)</strong> e boas práticas para primeiro emprego em TI.
+          </p>
+
+          <label class="dropzone" id="pdf-dropzone" for="pdf-input">
+            <input type="file" id="pdf-input" accept="application/pdf" hidden />
+            <div class="dropzone-icon">PDF</div>
+            <strong id="pdf-file-label">Clique ou arraste seu currículo (.pdf) aqui</strong>
+            <span class="muted small">Máximo recomendado para estágio/1º emprego: 1 página, texto selecionável</span>
+          </label>
+
+          <div class="form-group">
+            <label for="pdf-raw-text">Texto extraído (ou cole o texto do seu currículo manualmente)</label>
+            <textarea id="pdf-raw-text" rows="8" placeholder="O conteúdo extraído do PDF aparecerá aqui. Você também pode colar o texto diretamente..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="target-job-text">Descrição da vaga desejada (opcional — para checar palavras-chave)</label>
+            <textarea id="target-job-text" rows="3" placeholder="Ex: Estágio em Suporte Técnico ou Desenvolvimento Web. Requisitos: Linux, Redes, SQL, Git, Python, trabalho em equipe..."></textarea>
+          </div>
+
+          <div class="btn-row">
+            <button id="analyze-pdf-btn" class="btn btn-primary" type="button">Analisar Currículo (ATS)</button>
+            <button id="analyze-pdf-ai-btn" class="btn btn-secondary" type="button">Analisar com IA (Gemini)</button>
+            <button id="send-to-builder-btn" class="btn btn-outline" type="button">Gerar Currículo Melhorado &rarr;</button>
+          </div>
+        </div>
+
+        <div class="card" id="pdf-result-card">
+          <h3>Diagnóstico do Recrutador TI</h3>
+          <div id="pdf-analysis-empty" class="empty-state">
+            <p>Envie um PDF ou clique em <strong>"Carregar Exemplo de Estudante"</strong> para ver a análise completa de ATS, contato, objetivo, projetos e competências.</p>
+          </div>
+          <div id="pdf-analysis-output" class="hidden"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: ANALISAR LINKEDIN -->
+    <section id="linkedin-tab" class="tab-panel no-print">
+      <div class="grid-2">
+        <div class="card">
+          <h3>Analisar Perfil do LinkedIn</h3>
+          <p class="muted">
+            Cole a URL do seu perfil e copie os textos das seções principais (Título/Headline, Sobre, Experiências/Projetos e Competências) para receber recomendações de posicionamento para vagas de TI.
+          </p>
+
+          <div class="form-group">
+            <label for="li-url">URL do LinkedIn</label>
+            <input type="url" id="li-url" placeholder="https://www.linkedin.com/in/seu-nome" />
+          </div>
+
+          <div class="form-group">
+            <label for="li-headline">Título (Headline)</label>
+            <input type="text" id="li-headline" placeholder="Ex: Estudante de Análise e Desenvolvimento de Sistemas | Java, SQL, Git | Buscando Estágio em TI" />
+          </div>
+
+          <div class="form-group">
+            <label for="li-about">Seção "Sobre" (Resumo)</label>
+            <textarea id="li-about" rows="4" placeholder="Cole aqui o seu resumo do LinkedIn..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="li-exp">Experiências, Projetos e Competências</label>
+            <textarea id="li-exp" rows="4" placeholder="Cole seus projetos acadêmicos, cursos, certificações e competências técnicas..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="li-github">Link do GitHub / Portfólio (opcional)</label>
+            <input type="url" id="li-github" placeholder="https://github.com/seu-usuario" />
+          </div>
+
+          <div class="btn-row">
+            <button id="analyze-li-btn" class="btn btn-primary" type="button">Analisar Perfil (Regras)</button>
+            <button id="analyze-li-ai-btn" class="btn btn-secondary" type="button">Analisar com IA (Gemini)</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Avaliação de Empregabilidade (LinkedIn + GitHub)</h3>
+          <div id="li-analysis-empty" class="empty-state">
+            <p>Preencha os campos ao lado para avaliar visibilidade para recrutadores, palavras-chave de TI, uso de portfólio no GitHub e dicas para Gupy/CIEE.</p>
+          </div>
+          <div id="li-analysis-output" class="hidden"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: CURRÍCULO MELHORADO (ATS 1 PÁGINA) -->
+    <section id="builder-tab" class="tab-panel">
+      <div class="builder-layout">
+        <div class="card no-print">
+          <div class="card-header-row">
+            <h3>Editor do Currículo ATS (1 Página)</h3>
+            <select id="template-theme" aria-label="Tema do modelo ATS">
+              <option value="preto">Modelo ATS Preto (Padrão Oficina)</option>
+              <option value="azul">Modelo ATS Azul (Destaque Sutil)</option>
+            </select>
+          </div>
+          <p class="muted small">
+            Baseado no <em>Modelo_Curriculo_Oficina_TI_ATS</em> do projeto Conecta Comunidade. Ajuste os campos e clique em <strong>Baixar / Imprimir PDF</strong>.
+          </p>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="cv-name">Nome Completo</label>
+              <input type="text" id="cv-name" placeholder="Ex: Lucas Ferreira da Silva" />
+            </div>
+            <div class="form-group">
+              <label for="cv-city">Cidade / UF</label>
+              <input type="text" id="cv-city" placeholder="Ex: Curitiba/PR" />
+            </div>
+            <div class="form-group">
+              <label for="cv-phone">Telefone com DDD</label>
+              <input type="text" id="cv-phone" placeholder="Ex: (41) 99999-8888" />
+            </div>
+            <div class="form-group">
+              <label for="cv-email">E-mail Profissional</label>
+              <input type="email" id="cv-email" placeholder="Ex: lucas.ferreira.ti@gmail.com" />
+            </div>
+            <div class="form-group">
+              <label for="cv-linkedin">LinkedIn</label>
+              <input type="text" id="cv-linkedin" placeholder="linkedin.com/in/lucas-ferreira" />
+            </div>
+            <div class="form-group">
+              <label for="cv-github">GitHub</label>
+              <input type="text" id="cv-github" placeholder="github.com/lucas-ferreira" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="cv-objective">Objetivo Profissional (direto e com cargo-alvo)</label>
+            <textarea id="cv-objective" rows="2" placeholder="Estágio em Desenvolvimento de Software ou Suporte Técnico em TI..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="cv-skills-infra">Competências: Infraestrutura, Redes e Suporte</label>
+            <input type="text" id="cv-skills-infra" placeholder="Windows, Linux, Redes TCP/IP, Cisco Packet Tracer, VirtualBox" />
+          </div>
+
+          <div class="form-group">
+            <label for="cv-skills-dev">Competências: Desenvolvimento e Tecnologia</label>
+            <input type="text" id="cv-skills-dev" placeholder="Java, Python, SQL, HTML5, CSS3, JavaScript, Git, GitHub" />
+          </div>
+
+          <div class="form-group">
+            <label for="cv-skills-soft">Competências Pessoais (Soft Skills)</label>
+            <input type="text" id="cv-skills-soft" placeholder="Resolução de problemas, Trabalho em equipe, Metodologias Ágeis (Scrum), Proatividade" />
+          </div>
+
+          <div class="form-group">
+            <label for="cv-projects">Projetos Técnicos e Acadêmicos (1 por linha)</label>
+            <textarea id="cv-projects" rows="3" placeholder="Sistema CRUD de Biblioteca em Java/MySQL com versionamento no GitHub&#10;Topologia de rede corporativa simulada no Cisco Packet Tracer"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="cv-experience">Experiência Profissional (ou Outras Experiências — deixe vazio se não houver)</label>
+            <textarea id="cv-experience" rows="3" placeholder="Loja Tech Center | Atendimento ao Cliente | Jan/2025 - Atual&#10;- Atendimento ao público, organização de estoque e suporte básico em sistemas internos."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="cv-education">Formação Acadêmica</label>
+            <textarea id="cv-education" rows="2" placeholder="Tecnologia em Análise e Desenvolvimento de Sistemas - Instituição de Ensino | 2º Semestre - Conclusão prevista: Dez/2027"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="cv-courses">Cursos e Certificações (1 por linha)</label>
+            <textarea id="cv-courses" rows="2" placeholder="Cisco Networking Academy - Fundamentos de Redes&#10;Fundação Bradesco - LGPD e Segurança da Informação"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="cv-languages">Idiomas</label>
+            <input type="text" id="cv-languages" placeholder="Português - Nativo | Inglês - Intermediário (leitura técnica)" />
+          </div>
+
+          <div class="btn-row">
+            <button id="auto-improve-btn" class="btn btn-secondary" type="button">Aplicar Melhorias de Recrutador</button>
+            <button id="print-cv-btn" class="btn btn-primary" type="button">Baixar / Imprimir PDF (1 Página)</button>
+          </div>
+        </div>
+
+        <!-- PREVIEW A4 ATS -->
+        <div class="preview-wrapper">
+          <div class="preview-toolbar no-print">
+            <span>Pré-visualização ATS (Formato A4)</span>
+            <span id="page-fit-badge" class="badge badge-ok">1 Página · Pronto para ATS</span>
+          </div>
+          <article id="cv-preview" class="cv-sheet theme-preto">
+            <!-- Preenchido via JS -->
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: PESQUISA ONLINE & PAINEL DO PROFESSOR -->
+    <section id="survey-tab" class="tab-panel">
+      <div class="grid-2">
+        <!-- FORMULÁRIO DE FEEDBACK BREVE -->
+        <div class="card no-print">
+          <span class="pill">Atividade 7 · Avaliação da Oficina</span>
+          <h3>Pesquisa Online de Feedback do Currículo</h3>
+          <p class="muted">
+            Responda em menos de 1 minuto. Os dados ajudam a equipe do projeto <strong>Conecta Comunidade</strong> a comprovar os resultados ao professor.
+          </p>
+
+          <form id="feedback-form">
+            <div class="form-group">
+              <label for="fb-name">Seu nome ou iniciais (opcional)</label>
+              <input type="text" id="fb-name" placeholder="Ex: Ana C. (ADS - 2º semestre)" />
+            </div>
+
+            <div class="form-group">
+              <label for="fb-goal">Qual seu objetivo atual em TI?</label>
+              <select id="fb-goal" required>
+                <option value="">Selecione...</option>
+                <option value="Estágio em TI">Estágio em TI</option>
+                <option value="Primeiro Emprego / Júnior">Primeiro Emprego / Júnior</option>
+                <option value="Jovem Aprendiz / Trainee">Jovem Aprendiz / Trainee</option>
+                <option value="Transição de Carreira">Transição de Carreira</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>1. O quanto as dicas e a análise melhoraram seu currículo? (1 a 5)</label>
+              <div class="rating-group" role="radiogroup" aria-label="Nota de melhoria do currículo">
+                <label><input type="radio" name="fb-rating" value="1" required /> 1</label>
+                <label><input type="radio" name="fb-rating" value="2" /> 2</label>
+                <label><input type="radio" name="fb-rating" value="3" /> 3</label>
+                <label><input type="radio" name="fb-rating" value="4" /> 4</label>
+                <label><input type="radio" name="fb-rating" value="5" checked /> 5</label>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="fb-clarity">2. As instruções sobre ATS, LinkedIn e GitHub ficaram claras?</label>
+              <select id="fb-clarity" required>
+                <option value="Sim, muito claras">Sim, muito claras</option>
+                <option value="Parcialmente claras">Parcialmente claras</option>
+                <option value="Precisa de mais exemplos">Precisa de mais exemplos</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="fb-confidence">3. Você se sente mais preparado(a) para se candidatar a vagas?</label>
+              <select id="fb-confidence" required>
+                <option value="Sim, muito mais preparado(a)">Sim, muito mais preparado(a)</option>
+                <option value="Um pouco mais preparado(a)">Um pouco mais preparado(a)</option>
+                <option value="Ainda tenho dúvidas">Ainda tenho dúvidas</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="fb-comment">4. Feedback breve ou sugestão sobre o currículo gerado</label>
+              <textarea id="fb-comment" rows="3" placeholder="Ex: Gostei de saber que devo destacar projetos da faculdade e usar modelo de 1 coluna para a Gupy."></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary full-width">Enviar Feedback</button>
+            <p id="fb-success-msg" class="success-msg hidden">Feedback registrado com sucesso! Obrigado por participar.</p>
+          </form>
+        </div>
+
+        <!-- PAINEL DO PROFESSOR / EVIDÊNCIAS -->
+        <div class="card" id="professor-panel">
+          <div class="card-header-row">
+            <div>
+              <span class="pill">Atividade 8 · Evidências para o Professor</span>
+              <h3>Resultados da Pesquisa Online</h3>
+            </div>
+            <div class="btn-row no-print">
+              <button id="sync-sheets-btn" class="btn btn-outline small-btn" type="button">Atualizar do Sheets</button>
+              <button id="export-csv-btn" class="btn btn-outline small-btn" type="button">Exportar CSV</button>
+              <button id="print-report-btn" class="btn btn-secondary small-btn" type="button">Imprimir Relatório</button>
+            </div>
+          </div>
+          <p id="sheets-sync-status" class="muted small no-print" style="margin: 0 0 8px;"></p>
+
+          <div class="kpi-grid" id="survey-kpis">
+            <!-- Preenchido via JS -->
+          </div>
+
+          <div class="chart-box">
+            <h4>Distribuição de Notas (1 a 5)</h4>
+            <div id="rating-bars" class="bar-chart"></div>
+          </div>
+
+          <div class="chart-box">
+            <h4>Respostas Recentes dos Participantes</h4>
+            <div id="feedback-list" class="feedback-list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer no-print">
+    <div class="container">
+      <p>Projeto de Extensão <strong>Conecta Comunidade</strong> · Inclusão Digital, Empregabilidade e Desenvolvimento Tecnológico · ODS 4 e ODS 8</p>
+    </div>
+  </footer>
+
+  <script src="analyzer.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
