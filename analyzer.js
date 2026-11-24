@@ -75,10 +75,11 @@ function analyzeResumeText(rawText, pageCount = 1, jobDescription = '') {
   }
 
   // 2. Contato & E-mail Profissional
-  const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-  const hasPhone = /\(?\d{2}\)?\s?\d{4,5}-?\d{4}/.test(text);
-  const hasLinkedIn = /linkedin\.com/i.test(text);
-  const hasGitHub = /github\.com/i.test(text);
+  const contact = extractContactInfo(text);
+  const emailMatch = contact.email ? [contact.email] : null;
+  const hasPhone = Boolean(contact.phone);
+  const hasLinkedIn = Boolean(contact.linkedin);
+  const hasGitHub = Boolean(contact.github);
 
   if (emailMatch && hasPhone) {
     const email = emailMatch[0].toLowerCase();
@@ -343,12 +344,59 @@ function analyzeLinkedInProfile({ url, headline, about, exp, github }) {
   };
 }
 
+function extractContactInfo(rawText) {
+  const text = rawText || '';
+  const compactText = text.replace(/\s*([@])\s*/g, '$1').replace(/([a-zA-Z0-9])\s*\.\s*(dev|com|br|org|net|edu|io)\b/gi, '$1.$2');
+  const email = (compactText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/) || [''])[0];
+  const phoneRaw = (text.match(/\(?\s*\d{2}\s*\)?\s*\d{4,5}\s*-?\s*\d{4}/) || [''])[0];
+  const phone = phoneRaw.replace(/\s+/g, ' ').replace(/\s*-\s*/, '-').trim();
+  const city = (text.match(/([A-ZÀ-Ú][a-zà-úA-ZÀ-Ú\s]{1,28}\/[A-Z]{2})\b/) || ['', ''])[1].trim();
+  const linkedin = (text.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[^\s|,;]+/i) || [''])[0];
+  const github = (text.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/[^\s|,;]+/i) || [''])[0];
+  return { email, phone, city, linkedin, github };
+}
+
+function extractSections(rawText) {
+  const lines = (rawText || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const headers = [
+    { key: 'objective', rx: /^(objetivo|objetivo profissional|resumo)$/i },
+    { key: 'skills', rx: /^(competencias|habilidades|competencias tecnicas.*|conhecimentos.*)$/i },
+    { key: 'projects', rx: /^(projetos|projetos tecnicos.*|projetos academicos.*)$/i },
+    { key: 'experience', rx: /^(experiencia|experiencia profissional.*)$/i },
+    { key: 'education', rx: /^(formacao|formacao academica.*)$/i },
+    { key: 'courses', rx: /^(cursos|cursos e certificacoes.*)$/i },
+    { key: 'languages', rx: /^(idiomas.*)$/i }
+  ];
+
+  const sections = {};
+  let currentKey = null;
+  for (const line of lines) {
+    const clean = normalizeText(line).replace(/[:\-–]+$/, '').trim();
+    const matched = headers.find(h => h.rx.test(clean));
+    if (matched) {
+      currentKey = matched.key;
+      if (!sections[currentKey]) sections[currentKey] = [];
+      continue;
+    }
+    if (currentKey) {
+      sections[currentKey].push(line);
+    }
+  }
+  return sections;
+}
+
 function parseResumeToProfile(rawText) {
   const lines = (rawText || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-  const email = (rawText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/) || [''])[0];
-  const phone = (rawText.match(/\(?\d{2}\)?\s?\d{4,5}-?\d{4}/) || [''])[0];
-  const linkedin = (rawText.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[^\s|,;]+/i) || [''])[0];
-  const github = (rawText.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/[^\s|,;]+/i) || [''])[0];
+  const contact = extractContactInfo(rawText);
+  const sections = extractSections(rawText);
+
+  let name = '';
+  for (const line of lines.slice(0, 5)) {
+    if (!/@|linkedin\.com|github\.com|\d{4}/i.test(line) && line.length >= 4 && line.length <= 70) {
+      name = line.split('|')[0].trim();
+      break;
+    }
+  }
 
   const norm = normalizeText(rawText);
   const infraList = TI_KEYWORDS.infra.filter(k => norm.includes(k));
@@ -356,11 +404,18 @@ function parseResumeToProfile(rawText) {
   const softList = TI_KEYWORDS.soft.filter(k => norm.includes(normalizeText(k)));
 
   return {
-    name: lines[0] && lines[0].length < 60 ? lines[0] : '',
-    email,
-    phone,
-    linkedin,
-    github,
+    name,
+    city: contact.city,
+    email: contact.email,
+    phone: contact.phone,
+    linkedin: contact.linkedin,
+    github: contact.github,
+    objective: (sections.objective || []).join(' '),
+    projects: (sections.projects || []).join('\n'),
+    experience: (sections.experience || []).join('\n'),
+    education: (sections.education || []).join('\n'),
+    courses: (sections.courses || []).join('\n'),
+    languages: (sections.languages || []).join(' '),
     infra: infraList.join(', '),
     dev: devList.join(', '),
     soft: softList.join(', ')

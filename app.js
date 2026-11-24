@@ -21,21 +21,24 @@ document.addEventListener('DOMContentLoaded', () => {
       const saved = JSON.parse(localStorage.getItem(CONFIG_STORAGE_KEY) || '{}');
       return {
         aiUrl: (saved.aiUrl || DEFAULT_AI_ENDPOINT || '').trim(),
-        sheetsUrl: (saved.sheetsUrl || DEFAULT_SHEETS_URL || '').trim()
+        sheetsUrl: (saved.sheetsUrl || DEFAULT_SHEETS_URL || '').trim(),
+        aiModel: (saved.aiModel || 'gemini-2.5-flash').trim()
       };
     } catch {
-      return { aiUrl: DEFAULT_AI_ENDPOINT, sheetsUrl: DEFAULT_SHEETS_URL };
+      return { aiUrl: DEFAULT_AI_ENDPOINT, sheetsUrl: DEFAULT_SHEETS_URL, aiModel: 'gemini-2.5-flash' };
     }
   }
 
   const integrationsPanel = document.getElementById('integrations-panel');
   const cfgAiInput = document.getElementById('cfg-ai-url');
   const cfgSheetsInput = document.getElementById('cfg-sheets-url');
+  const cfgModelSelect = document.getElementById('cfg-ai-model');
   const cfgStatusMsg = document.getElementById('cfg-status-msg');
 
   const initialCfg = getConfig();
   cfgAiInput.value = initialCfg.aiUrl;
   cfgSheetsInput.value = initialCfg.sheetsUrl;
+  cfgModelSelect.value = initialCfg.aiModel;
 
   document.getElementById('toggle-config-btn').addEventListener('click', () => {
     if (!integrationsPanel.classList.contains('hidden')) {
@@ -59,7 +62,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('save-config-btn').addEventListener('click', () => {
     const newCfg = {
       aiUrl: cfgAiInput.value.trim(),
-      sheetsUrl: cfgSheetsInput.value.trim()
+      sheetsUrl: cfgSheetsInput.value.trim(),
+      aiModel: cfgModelSelect.value
     };
     localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(newCfg));
     cfgStatusMsg.textContent = 'Conexões salvas neste navegador!';
@@ -108,8 +112,38 @@ document.addEventListener('DOMContentLoaded', () => {
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
-        const strings = content.items.map(item => item.str);
-        fullText += strings.join(' ') + '\n';
+        const linesMap = [];
+
+        for (const item of content.items) {
+          if (!item.str) continue;
+          const x = item.transform ? item.transform[4] : 0;
+          const y = item.transform ? item.transform[5] : 0;
+          let line = linesMap.find(l => Math.abs(l.y - y) <= 3.5);
+          if (!line) {
+            line = { y, items: [] };
+            linesMap.push(line);
+          }
+          line.items.push({ str: item.str, x, w: item.width || 0 });
+        }
+
+        linesMap.sort((a, b) => b.y - a.y);
+        const pageLines = linesMap.map(line => {
+          line.items.sort((a, b) => a.x - b.x);
+          let text = '';
+          let prevEnd = null;
+          for (const part of line.items) {
+            if (prevEnd !== null) {
+              const gap = part.x - prevEnd;
+              const needsSpace = gap > 2.2 && !text.endsWith(' ') && !part.str.startsWith(' ');
+              if (needsSpace) text += ' ';
+            }
+            text += part.str;
+            prevEnd = part.x + part.w;
+          }
+          return text.trim();
+        }).filter(Boolean);
+
+        fullText += pageLines.join('\n') + '\n';
       }
 
       pdfRawText.value = fullText.trim();
@@ -206,24 +240,34 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('analyze-pdf-btn').addEventListener('click', runPdfAnalysis);
 
   // Enviar dados extraídos para o Gerador ATS
-  document.getElementById('send-to-builder-btn').addEventListener('click', () => {
-    const parsed = window.ConectaAnalyzer.parseResumeToProfile(pdfRawText.value);
+  function fillBuilderFromParsed(parsed) {
     if (parsed.name && !cvFields.name.value) cvFields.name.value = parsed.name;
+    if (parsed.city && !cvFields.city.value) cvFields.city.value = parsed.city;
     if (parsed.email) cvFields.email.value = parsed.email;
     if (parsed.phone) cvFields.phone.value = parsed.phone;
     if (parsed.linkedin) cvFields.linkedin.value = parsed.linkedin;
     if (parsed.github) cvFields.github.value = parsed.github;
+    if (parsed.objective && !cvFields.objective.value) cvFields.objective.value = parsed.objective;
+    if (parsed.projects && !cvFields.projects.value) cvFields.projects.value = parsed.projects;
+    if (parsed.experience && !cvFields.experience.value) cvFields.experience.value = parsed.experience;
+    if (parsed.education && !cvFields.education.value) cvFields.education.value = parsed.education;
+    if (parsed.courses && !cvFields.courses.value) cvFields.courses.value = parsed.courses;
+    if (parsed.languages && !cvFields.languages.value) cvFields.languages.value = parsed.languages;
     if (parsed.infra && !cvFields.skillsInfra.value) cvFields.skillsInfra.value = parsed.infra;
     if (parsed.dev && !cvFields.skillsDev.value) cvFields.skillsDev.value = parsed.dev;
     if (parsed.soft && !cvFields.skillsSoft.value) cvFields.skillsSoft.value = parsed.soft;
+  }
 
+  document.getElementById('send-to-builder-btn').addEventListener('click', () => {
+    const parsed = window.ConectaAnalyzer.parseResumeToProfile(pdfRawText.value);
+    fillBuilderFromParsed(parsed);
     renderCvPreview();
     activateTab('builder-tab');
   });
 
   // --- Análise Real com IA (Gemini via Cloudflare Worker / Vercel) ---
   async function runGeminiAnalysis({ mode, content, jobDescription, outputEl, emptyEl, btnEl }) {
-    const { aiUrl } = getConfig();
+    const { aiUrl, aiModel } = getConfig();
     if (!content.trim()) {
       alert('Preencha ou envie o conteúdo antes de analisar com IA.');
       return;
@@ -251,7 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch(aiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode, content, jobDescription })
+        body: JSON.stringify({ mode, content, jobDescription, model: aiModel })
       });
       const data = await res.json();
       if (!res.ok || !data.ok || !data.analysis) {
@@ -288,11 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         applyBox.querySelector('#apply-ai-profile-btn').addEventListener('click', () => {
           const parsed = window.ConectaAnalyzer.parseResumeToProfile(pdfRawText.value);
-          if (parsed.name && !cvFields.name.value) cvFields.name.value = parsed.name;
-          if (parsed.email && !cvFields.email.value) cvFields.email.value = parsed.email;
-          if (parsed.phone && !cvFields.phone.value) cvFields.phone.value = parsed.phone;
-          if (parsed.linkedin && !cvFields.linkedin.value) cvFields.linkedin.value = parsed.linkedin;
-          if (parsed.github && !cvFields.github.value) cvFields.github.value = parsed.github;
+          fillBuilderFromParsed(parsed);
 
           if (ai.improvedProfile.objective) cvFields.objective.value = ai.improvedProfile.objective;
           if (ai.improvedProfile.skillsInfra) cvFields.skillsInfra.value = ai.improvedProfile.skillsInfra;
