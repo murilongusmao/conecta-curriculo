@@ -350,10 +350,40 @@ function extractContactInfo(rawText) {
   const email = (compactText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/) || [''])[0];
   const phoneRaw = (text.match(/\(?\s*\d{2}\s*\)?\s*\d{4,5}\s*-?\s*\d{4}/) || [''])[0];
   const phone = phoneRaw.replace(/\s+/g, ' ').replace(/\s*-\s*/, '-').trim();
-  const city = (text.match(/([A-ZÀ-Ú][a-zà-úA-ZÀ-Ú\s]{1,28}\/[A-Z]{2})\b/) || ['', ''])[1].trim();
+
+  let city = '';
+  for (const line of text.split(/\r?\n/)) {
+    for (const part of line.split('|')) {
+      const candidate = part.trim();
+      if (/^[A-ZÀ-Ú][a-zà-úA-ZÀ-Ú ]{1,28}\/[A-Z]{2}$/.test(candidate)) {
+        city = candidate;
+        break;
+      }
+    }
+    if (city) break;
+  }
+
   const linkedin = (text.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[^\s|,;]+/i) || [''])[0];
   const github = (text.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/[^\s|,;]+/i) || [''])[0];
   return { email, phone, city, linkedin, github };
+}
+
+function mergeWrappedLines(lines) {
+  if (!lines || !lines.length) return [];
+  const hasBullets = lines.some(l => /^[•\-*▪]\s*/.test(l));
+  if (!hasBullets) return lines;
+
+  const merged = [];
+  for (const line of lines) {
+    const isBullet = /^[•\-*▪]\s*/.test(line);
+    const isJobHeader = /\|/.test(line) && !isBullet;
+    if (isBullet || isJobHeader || merged.length === 0) {
+      merged.push(line.replace(/^[•\-*▪]\s*/, '').trim());
+    } else {
+      merged[merged.length - 1] = `${merged[merged.length - 1]} ${line}`.replace(/\s+/g, ' ').trim();
+    }
+  }
+  return merged;
 }
 
 function extractSections(rawText) {
@@ -411,10 +441,10 @@ function parseResumeToProfile(rawText) {
     linkedin: contact.linkedin,
     github: contact.github,
     objective: (sections.objective || []).join(' '),
-    projects: (sections.projects || []).join('\n'),
-    experience: (sections.experience || []).join('\n'),
+    projects: mergeWrappedLines(sections.projects || []).join('\n'),
+    experience: mergeWrappedLines(sections.experience || []).join('\n'),
     education: (sections.education || []).join('\n'),
-    courses: (sections.courses || []).join('\n'),
+    courses: mergeWrappedLines(sections.courses || []).join('\n'),
     languages: (sections.languages || []).join(' '),
     infra: infraList.join(', '),
     dev: devList.join(', '),

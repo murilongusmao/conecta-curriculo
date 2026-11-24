@@ -392,6 +392,31 @@ document.addEventListener('DOMContentLoaded', () => {
     return `<ul>${lines.map(l => `<li>${escapeHtml(l.replace(/^[-•*]\s*/, ''))}</li>`).join('')}</ul>`;
   }
 
+  function formatExperienceHtml(text) {
+    const lines = (text || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (!lines.length) return '';
+    let html = '';
+    let inList = false;
+    for (const line of lines) {
+      const isHeader = /\|/.test(line) && !/^[-•*]\s*/.test(line);
+      if (isHeader) {
+        if (inList) {
+          html += '</ul>';
+          inList = false;
+        }
+        html += `<p><strong>${escapeHtml(line)}</strong></p>`;
+      } else {
+        if (!inList) {
+          html += '<ul>';
+          inList = true;
+        }
+        html += `<li>${escapeHtml(line.replace(/^[-•*]\s*/, ''))}</li>`;
+      }
+    }
+    if (inList) html += '</ul>';
+    return html;
+  }
+
   function renderCvPreview() {
     cvPreview.className = `cv-sheet theme-${cvFields.theme.value}`;
 
@@ -458,7 +483,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cvFields.experience.value.trim()
           ? `<section class="cv-section">
                <h2 class="cv-section-title">Experiência Profissional (ou Outras Experiências)</h2>
-               ${linesToList(cvFields.experience.value)}
+               ${formatExperienceHtml(cvFields.experience.value)}
              </section>`
           : ''
       }
